@@ -23,21 +23,5 @@ services:
     networks:
       - "optel-workshop"
 
-  seq:
-    image: datalust/seq
-    container_name: seq
-    ports:
-      - "8081:80"
-      - "5341:5341"
-    environment:
-      - ACCEPT_EULA=Y
-      - SEQ_FIRSTRUN_ADMINPASSWORDHASH=FKPPttXNciL8WEbCRot8IXDsGaYreDBRqX7qVdX+kDv0bCpg/g==   # --> 'password'
-    networks:
-      - "optel-workshop"
-    deploy:
-      resources:
-        limits:
-          memory: 256M
-
 networks:
   optel-workshop:

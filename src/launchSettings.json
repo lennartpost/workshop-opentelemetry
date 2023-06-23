@@ -8,8 +8,7 @@
       "composeLaunchUrl": "{Scheme}://localhost:{ServicePort}",
       "serviceActions": {
         "frontend": "StartDebugging",
-        "backend": "StartDebugging",
-        "seq": "StartWithoutDebugging"
+        "backend": "StartDebugging"
       }
     },
     "Docker Backend": {
@@ -20,8 +19,7 @@
       "composeLaunchUrl": "{Scheme}://localhost:{ServicePort}/swagger",
       "serviceActions": {
         "backend": "StartDebugging",
-        "frontend": "StartDebugging",
-        "seq": "StartWithoutDebugging"
+        "frontend": "StartDebugging"
       }
     }
   }
