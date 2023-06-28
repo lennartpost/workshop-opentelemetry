@@ -1,11 +1,12 @@
-﻿namespace Backend.Model
+﻿namespace Model
 {
     public class FhirResource
     {
-        public string? Id { get; set; }
+        //[Key]
+        public string Id { get; set; } = Guid.NewGuid().ToString();
+
+        public DateTime Created { get; set; } = DateTime.Now;
 
         public string? Type { get; set; }
-
-        public string? Json { get; set; }
     }
 }

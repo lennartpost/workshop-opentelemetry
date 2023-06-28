@@ -1,10 +1,9 @@
 using Backend.Database;
-using Backend.Model;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Model;
 using OpenTelemetry;
 using Serilog;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 
 namespace Backend
 {
@@ -60,14 +59,14 @@ namespace Backend
                 StartActivity();
                 IncrementCounter();
 
-                return await db.FhirResources.ToListAsync();
+                return await db.PatientResources.ToListAsync();
             });
 
             app.MapGet("/fhir/{id}", async (string id, FhirResourceDb db, ILogger<Program> logger) =>
             {
                 logger.LogInformation("Received request: GET FHIR resource with id {resource.id}", id);
-                return await db.FhirResources.FindAsync(id)
-                    is FhirResource fhirResource
+                return await db.PatientResources.FindAsync(id)
+                    is Patient fhirResource
                         ? Results.Ok(fhirResource)
                         : Results.NotFound();
             });
@@ -75,70 +74,58 @@ namespace Backend
             app.MapGet("/fhir/{resourceType}/{id}", async (string id, string resourceType, FhirResourceDb db, ILogger<Program> logger) =>
             {
                 logger.LogInformation("Received request: GET FHIR resource with id {resource.id} and type {resource.type}", id, resourceType);
-                return await db.FhirResources.Where(r => r.Id == id && r.Type == resourceType).SingleOrDefaultAsync()
-                    is FhirResource fhirResource
+                return await db.PatientResources.Where(r => r.Id == id && r.Type == resourceType).SingleOrDefaultAsync()
+                    is Patient fhirResource
                         ? Results.Ok(fhirResource)
                         : Results.NotFound();
             });
 
-            app.MapPost("/fhir/{resourceType}", async (HttpRequest request, string resourceType, FhirResourceDb db, ILogger<Program> logger) =>
+            app.MapPost("/fhir/{resourceType}", async (string resourceType, [FromBody] Patient patient, FhirResourceDb db, ILogger<Program> logger) =>
             {
                 logger.LogInformation("Received request: POST FHIR resource with type {resource.type}", resourceType);
-                var json = await GetRequestBodyAsync(request);
-                logger.LogDebug("Request contained JSON {resource.json}", json);
 
-                if (TryParseRequestBody(json, out FhirResource fhirResource))
-                {
-                    if (!string.Equals(resourceType, fhirResource.Type, StringComparison.OrdinalIgnoreCase))
-                        return Results.BadRequest($"Resource type does not match endpoint: {fhirResource.Type} != {resourceType}");
+                if (!string.Equals(resourceType, patient.Type, StringComparison.OrdinalIgnoreCase))
+                    return Results.BadRequest($"Resource type does not match endpoint: {patient.Type} != {resourceType}");
 
-                    db.FhirResources.Add(fhirResource);
-                    await db.SaveChangesAsync();
+                db.PatientResources.Add(patient);
+                await db.SaveChangesAsync();
 
-                    return Results.Created($"/fhir/{fhirResource.Id}", fhirResource);
-                }
-                logger.LogError("Could not parse JSON {json}", json);
-                return Results.BadRequest("Could not read request body");
+                return Results.Created($"/fhir/{patient.Id}", patient);
             });
 
-            app.MapPut("/fhir/{resourceType}/{id}", async (string id, string resourceType, HttpRequest request, FhirResourceDb db, ILogger<Program> logger) =>
+            app.MapPut("/fhir/{resourceType}/{id}", async (string id, string resourceType, [FromBody] Patient patient, FhirResourceDb db, ILogger<Program> logger) =>
             {
                 logger.LogInformation("Received request: PUT FHIR resource with id {resource.id} and type {resource.type}", id, resourceType);
-                var json = await GetRequestBodyAsync(request);
-                logger.LogDebug("Request contained JSON {resource.json}", json);
 
-                if (TryParseRequestBody(json, out FhirResource inputFhirResource))
-                {
-                    if (!string.Equals(id, inputFhirResource.Id, StringComparison.OrdinalIgnoreCase))
-                        return Results.BadRequest($"Resource Id {inputFhirResource.Id} does not match id {id} in endpoint URL");
+                if (!string.Equals(id, patient.Id, StringComparison.OrdinalIgnoreCase))
+                    return Results.BadRequest($"Resource Id {patient.Id} does not match id {id} in endpoint URL");
 
-                    if (!string.Equals(resourceType, inputFhirResource.Type, StringComparison.OrdinalIgnoreCase))
-                        return Results.BadRequest($"Resource type {inputFhirResource.Type} does not match endpoint {resourceType}");
+                if (!string.Equals(resourceType, patient.Type, StringComparison.OrdinalIgnoreCase))
+                    return Results.BadRequest($"Resource type {patient.Type} does not match endpoint {resourceType}");
 
-                    var fhirResource = await db.FhirResources.FindAsync(id);
+                var foundPatient = await db.PatientResources.FindAsync(id);
 
-                    if (fhirResource is null) return Results.NotFound();
+                if (foundPatient is null) return Results.NotFound();
 
-                    // Update FHIR resource
-                    fhirResource.Type = inputFhirResource.Type;
-                    fhirResource.Json = inputFhirResource.Json;
+                // Update FHIR patient
+                foundPatient.Type = patient.Type;
+                foundPatient.Gender = patient.Gender;
+                foundPatient.Name = patient.Name;
+                foundPatient.Birthdate = patient.Birthdate;
 
-                    await db.SaveChangesAsync();
+                await db.SaveChangesAsync();
 
-                    return Results.NoContent();
-                }
-                logger.LogError("Could not parse JSON {json}", json);
-                return Results.BadRequest("Could not read request body");
+                return Results.NoContent();
             });
 
             app.MapDelete("/fhir/{id}", async (string id, FhirResourceDb db, ILogger<Program> logger) =>
             {
                 logger.LogInformation("Received request: DEL FHIR resource with id {resource.id}", id);
-                if (await db.FhirResources.FindAsync(id) is FhirResource fhirResource)
+                if (await db.PatientResources.FindAsync(id) is Patient patient)
                 {
-                    db.FhirResources.Remove(fhirResource);
+                    db.PatientResources.Remove(patient);
                     await db.SaveChangesAsync();
-                    return Results.Ok(fhirResource);
+                    return Results.Ok(patient);
                 }
                 logger.LogWarning("Delete FHIR resource failed, could not find resource with {resource.id}", id);
                 return Results.NotFound();
@@ -151,34 +138,6 @@ namespace Backend
             finally
             {
                 Log.CloseAndFlush();
-            }
-
-            async static Task<string> GetRequestBodyAsync(HttpRequest request)
-            {
-                using StreamReader stream = new(request.Body);
-                return await stream.ReadToEndAsync();
-            }
-
-            static bool TryParseRequestBody(string json, out FhirResource fhirResource)
-            {
-                fhirResource = new();
-
-                var fhirJson = JsonSerializer.Deserialize<JsonNode>(json);
-
-                if (fhirJson is null || fhirJson["resourceType"] is null)
-                    return false;
-
-                // ensure we have an Id value
-                fhirJson["id"] ??= Guid.NewGuid().ToString();
-
-                fhirResource = new()
-                {
-                    Id = fhirJson["id"]?.GetValue<string>(),
-                    Type = fhirJson["resourceType"]?.GetValue<string>(),
-                    Json = fhirJson.ToJsonString(),
-                };
-
-                return (fhirResource is not null);
             }
 
             static void StartActivity()

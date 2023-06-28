@@ -1,5 +1,5 @@
-﻿using Backend.Model;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using Model;
 
 namespace Backend.Database
 {
@@ -7,6 +7,6 @@ namespace Backend.Database
     {
         public FhirResourceDb(DbContextOptions<FhirResourceDb> options) : base(options) { }
 
-        public DbSet<FhirResource> FhirResources => Set<FhirResource>();
+        public DbSet<Patient> PatientResources => Set<Patient>();
     }
 }

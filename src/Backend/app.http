@@ -1,0 +1,35 @@
+# For more info on HTTP files go to https://aka.ms/vs/httpfile
+@hostname=localhost
+@port=6001
+@patientId=4ada15c0-0d7b-48ef-810f-46620693146b
+
+GET https://{{hostname}}:{{port}}/fhir
+
+###
+
+POST https://{{hostname}}:{{port}}/fhir/Patient
+Content-Type: application/json
+
+{
+    "gender": null,
+    "name": "Jansen",
+    "birthdate": null,
+    "type": "Patient"
+}
+
+###
+
+PUT https://{{hostname}}:{{port}}/fhir/Patient/{{patientId}}
+Content-Type: application/json
+
+{
+    "id": "{{patientId}}",
+    "gender": null,
+    "name": "Jansen3",
+    "birthdate": null,
+    "type": "Patient"
+}
+
+###
+
+DELETE https://{{hostname}}:{{port}}/fhir/{{patientId}}

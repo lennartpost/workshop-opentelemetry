@@ -1,6 +1,6 @@
-﻿using Backend.Model;
-using Frontend.Services;
+﻿using Frontend.Services;
 using Microsoft.AspNetCore.Mvc;
+using Model;
 using OpenTelemetry;
 
 namespace Frontend.Controllers
@@ -26,7 +26,7 @@ namespace Frontend.Controllers
                 StartActivity();
                 IncrementCounter(nameof(Index));
 
-                var fhirResources = await _service.GetAllFhirResourcesAsync();
+                var fhirResources = await _service.GetAllFhirResourcesAsync<Patient>();
                 return fhirResources != null ?
                    View(fhirResources) :
                    Problem("FhirResources is null.");
@@ -45,7 +45,7 @@ namespace Frontend.Controllers
                 _logger.LogInformation("Start of GET Patient details page {resource.id}", id);
                 if (id == null) { return NotFound(); }
 
-                var fhirResource = await _service.GetFhirResourceAsync(id);
+                var fhirResource = await _service.GetFhirResourceAsync<Patient>(id);
 
                 return (fhirResource == null) ? NotFound() : View(fhirResource);
             }
@@ -61,7 +61,7 @@ namespace Frontend.Controllers
             try
             {
                 _logger.LogInformation("Start of GET Patient Create page");
-                return View(new FhirResource());
+                return View(new Patient());
             }
             finally
             {
@@ -71,7 +71,7 @@ namespace Frontend.Controllers
 
         // POST: PatientController/Create
         [HttpPost]
-        public async Task<IActionResult> Create([Bind("Type,Json")] FhirResource fhirResource)
+        public async Task<IActionResult> Create([Bind("Type,Name")] Patient fhirResource)
         {
             try
             {
@@ -81,7 +81,7 @@ namespace Frontend.Controllers
                     await _service.CreateFhirResourceAsync(fhirResource);
                     return RedirectToAction(nameof(Index));
                 }
-                _logger.LogWarning("Submitted FhirResource is not valid. Json: {resource.json}", fhirResource?.Json);
+                _logger.LogWarning("Submitted FhirResource is not valid. {resource}", fhirResource);
                 return View(fhirResource);
             }
             finally
@@ -98,7 +98,7 @@ namespace Frontend.Controllers
                 _logger.LogInformation("Start of GET Edit Patient {resource.id} page", id);
                 if (id == null) { return NotFound(); }
 
-                var fhirResource = await _service.GetFhirResourceAsync(id);
+                var fhirResource = await _service.GetFhirResourceAsync<Patient>(id);
 
                 if (fhirResource == null) { return NotFound(); }
 
@@ -112,7 +112,7 @@ namespace Frontend.Controllers
 
         // POST: PatientController/Edit/5
         [HttpPost]
-        public async Task<IActionResult> Edit(string id, [Bind("Id,Type,Json")] FhirResource fhirResource)
+        public async Task<IActionResult> Edit(string id, [Bind("Id,Created,Type,Name")] Patient fhirResource)
         {
             try
             {
@@ -123,13 +123,13 @@ namespace Frontend.Controllers
                 {
                     try
                     {
-                        _logger.LogInformation("Updating {resource.type} {resource.id}. Json: {resource.json}", fhirResource.Type, fhirResource.Id, fhirResource.Json);
+                        _logger.LogInformation("Updating {resource.type} {resource.id}. Name: {resource.name}", fhirResource.Type, fhirResource.Id, fhirResource.Name);
                         await _service.UpdateFhirResourceAsync(fhirResource);
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Error in updating patient {resource.id}", id);
-                        if (await _service.GetFhirResourceAsync(fhirResource.Id) is null)
+                        if (await _service.GetFhirResourceAsync<Patient>(fhirResource.Id) is null)
                         {
                             _logger.LogError(ex, "Trying to update Patient {resource.id}, but patient was not found", fhirResource.Id);
                             return NotFound();
@@ -157,7 +157,7 @@ namespace Frontend.Controllers
                 _logger.LogInformation("Start of GET Delete Patient {resource.id} page", id);
                 if (id == null) { return NotFound(); }
 
-                var fhirResource = await _service.GetFhirResourceAsync(id);
+                var fhirResource = await _service.GetFhirResourceAsync<Patient>(id);
 
                 if (fhirResource == null) { return NotFound(); }
 

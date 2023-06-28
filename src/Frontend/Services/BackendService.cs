@@ -1,6 +1,4 @@
-﻿using Backend.Model;
-using System.Net.Mime;
-using System.Text;
+﻿using Model;
 
 namespace Frontend.Services
 {
@@ -13,37 +11,37 @@ namespace Frontend.Services
             _httpClient = httpClient;
         }
 
-        public async Task<List<FhirResource>> GetAllFhirResourcesAsync()
+        public async Task<List<T>> GetAllFhirResourcesAsync<T>() where T : FhirResource
         {
-            var fhirResources = await _httpClient.GetFromJsonAsync<List<FhirResource>>("/fhir");
+            var fhirResources = await _httpClient.GetFromJsonAsync<List<T>>("/fhir");
             return fhirResources ?? new();
         }
 
-        public async Task<FhirResource?> GetFhirResourceAsync(string? id)
+        public async Task<T?> GetFhirResourceAsync<T>(string? id) where T : FhirResource
         {
             if (id is null)
                 return null;
 
-            var fhirResource = await _httpClient.GetFromJsonAsync<FhirResource>($"/fhir/{id}");
+            var fhirResource = await _httpClient.GetFromJsonAsync<T>($"/fhir/{id}");
             return fhirResource;
         }
 
-        public async Task<FhirResource?> CreateFhirResourceAsync(FhirResource? fhirResource)
+        public async Task<T?> CreateFhirResourceAsync<T>(T? fhirResource) where T : FhirResource
         {
-            if (fhirResource?.Json is null)
+            if (fhirResource is null)
                 return null;
 
-            await _httpClient.PostAsync($"/fhir/{fhirResource.Type}", new StringContent(fhirResource.Json, Encoding.UTF8, MediaTypeNames.Application.Json));
+            await _httpClient.PostAsJsonAsync($"/fhir/{fhirResource.Type}", fhirResource);
 
             return fhirResource;
         }
 
-        public async Task<FhirResource?> UpdateFhirResourceAsync(FhirResource? fhirResource)
+        public async Task<T?> UpdateFhirResourceAsync<T>(T? fhirResource) where T : FhirResource
         {
-            if (fhirResource?.Json is null)
+            if (fhirResource is null)
                 return null;
 
-            await _httpClient.PutAsync($"/fhir/{fhirResource.Type}/{fhirResource.Id}", new StringContent(fhirResource.Json, Encoding.UTF8, MediaTypeNames.Application.Json));
+            await _httpClient.PutAsJsonAsync($"/fhir/{fhirResource.Type}/{fhirResource.Id}", fhirResource);
 
             return fhirResource;
         }
